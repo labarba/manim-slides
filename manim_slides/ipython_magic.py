@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .convert import RevealJS
+from .config import PresentationConfig
 from manim import Group, config, logger, tempconfig
 from manim.__main__ import main
 from manim.renderer.shader import shader_program_cache
@@ -24,7 +26,7 @@ try:
         magics_class,
         needs_local_scope,
     )
-    from IPython.display import Image, Video, display
+    from IPython.display import Image, Video, display, HTML, IFrame
 except ImportError:
     pass
 else:
@@ -159,8 +161,24 @@ else:
                         html_attributes=f'controls autoplay loop style="max-width: {config["media_width"]};"',
                         embed=embed,
                     )
+                presentation_config = PresentationConfig.parse_file(scene.slides_path)
 
-                display(result)
+                print(presentation_config)
+
+                html_file = (
+                    Path(config["media_dir"])
+                    / "jupyter"
+                    / f"{_generate_file_name()}.html"
+                )
+
+                RevealJS(presentation_configs=[presentation_config], data_uri=True).convert_to(html_file)
+
+                html_content = HTML(filename=html_file)
+                
+                print(html_file)
+                print(html_content)
+
+                display(IFrame(html_file, width="100%", height="100%"))
 
         def add_additional_args(self, args: list[str]) -> list[str]:
             additional_args = ["--jupyter"]

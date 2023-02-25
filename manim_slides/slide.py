@@ -52,6 +52,7 @@ class Slide(Scene):  # type:ignore
         self.current_animation = 0
         self.loop_start_animation: Optional[int] = None
         self.pause_start_animation = 0
+        self.slides_path: Optional[str] = None
 
     @property
     def partial_movie_files(self) -> List[str]:
@@ -208,6 +209,7 @@ class Slide(Scene):  # type:ignore
         logger.info(
             f"Slide '{scene_name}' configuration written in '{os.path.abspath(slide_path)}'"
         )
+        self.slides_path = slide_path
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         """MANIMGL renderer"""

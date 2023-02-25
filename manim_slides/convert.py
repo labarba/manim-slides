@@ -1,7 +1,9 @@
 import os
 import webbrowser
+import base64
 from enum import Enum
 from typing import Any, Callable, Dict, Generator, List, Optional, Type, Union
+from pathlib import Path
 
 import click
 import pkg_resources
@@ -33,6 +35,7 @@ def validate_config_option(
 class Converter(BaseModel):  # type: ignore
     presentation_configs: List[PresentationConfig] = []
     assets_dir: str = "{basename}_assets"
+    full_assets_dir: Optional[str] = None
     template: Optional[str] = None
 
     def convert_to(self, dest: str) -> None:
@@ -199,7 +202,7 @@ class RevealJS(Converter):
     min_scale: float = 0.2
     max_scale: float = 2.0
     # Configuration options from RevealJS
-    controls: JsBool = JsBool.false
+    controls: JsBool = JsBool.true
     controls_tutorial: JsBool = JsBool.true
     controls_layout: ControlsLayout = ControlsLayout.bottom_right
     controls_back_arrows: ControlsBackArrows = ControlsBackArrows.faded
@@ -272,6 +275,7 @@ class RevealJS(Converter):
     reveal_version: str = "4.4.0"
     reveal_theme: RevealTheme = RevealTheme.black
     title: str = "Manim Slides"
+    data_uri: bool = False
 
     class Config:
         use_enum_values = True
@@ -290,6 +294,15 @@ class RevealJS(Converter):
                 # Later, this might be useful to only mute the first video, or to make it optional.
                 # Read more about this:
                 #   https://developer.mozilla.org/en-US/docs/Web/Media/Autoplay_guide#autoplay_and_autoplay_blocking
+                if self.data_uri:
+                    parent = Path(self.full_assets_dir).parent
+                    filename = parent / file
+                    with open(filename, "rb") as f:
+                        data = f.read()
+                        data_str = base64.b64encode(data).decode("utf-8")
+
+                    file = f"data:video/mp4;base64,{data_str}"
+
                 if slide_config.is_loop():
                     yield f'<section data-background-video="{file}" data-background-video-muted data-background-video-loop></section>'
                 else:
@@ -315,12 +328,12 @@ class RevealJS(Converter):
         self.assets_dir = self.assets_dir.format(
             dirname=dirname, basename=basename, ext=ext
         )
-        full_assets_dir = os.path.join(dirname, self.assets_dir)
+        self.full_assets_dir = os.path.join(dirname, self.assets_dir)
 
-        os.makedirs(full_assets_dir, exist_ok=True)
+        os.makedirs(self.full_assets_dir, exist_ok=True)
 
         for presentation_config in self.presentation_configs:
-            presentation_config.concat_animations().move_to(full_assets_dir)
+            presentation_config.concat_animations().move_to(self.full_assets_dir)
 
         with open(dest, "w") as f:
             sections = "".join(self.get_sections_iter())
